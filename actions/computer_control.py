@@ -1,3 +1,4 @@
+from core.diagnostics import diagnostic
 #computer_control.py
 import io
 import json
@@ -315,7 +316,7 @@ def _focus_window(title: str) -> str:
 def _screen_find(description: str) -> tuple[int, int] | None:
     api_key = _get_api_key()
     if not api_key:
-        print("[ComputerControl] ⚠️ No API key for screen_find")
+        diagnostic("[ComputerControl] ⚠️ No API key for screen_find")
         return None
 
     try:
@@ -354,7 +355,7 @@ def _screen_find(description: str) -> tuple[int, int] | None:
             return int(match.group(1)), int(match.group(2))
 
     except Exception as e:
-        print(f"[ComputerControl] ⚠️ screen_find failed: {e}")
+        diagnostic(f"[ComputerControl] ⚠️ screen_find failed: {e}")
 
     return None
 
@@ -415,7 +416,7 @@ def computer_control(
     if player:
         player.write_log(f"[Computer] {action}")
 
-    print(f"[ComputerControl] ▶ {action}  {params}")
+    diagnostic(f"[ComputerControl] ▶ {action}  {params}")
 
     try:
 
@@ -497,7 +498,7 @@ def computer_control(
         if action == "random_data":
             dt     = params.get("type", "name")
             result = _random_data(dt)
-            print(f"[ComputerControl] 🎲 random {dt} → {result}")
+            diagnostic(f"[ComputerControl] 🎲 random {dt} → {result}")
             return result
 
         if action == "user_data":
@@ -506,11 +507,11 @@ def computer_control(
             value   = profile.get(field, "")
             if not value:
                 value = _random_data(field)
-                print(f"[ComputerControl] ⚠️ No '{field}' in memory, using random: {value}")
+                diagnostic(f"[ComputerControl] ⚠️ No '{field}' in memory, using random: {value}")
             return value
 
         return f"Unknown action: '{action}'"
 
     except Exception as e:
-        print(f"[ComputerControl] ❌ {action}: {e}")
+        diagnostic(f"[ComputerControl] ❌ {action}: {e}")
         return f"computer_control '{action}' failed: {e}"

@@ -1,3 +1,4 @@
+from core.diagnostics import diagnostic
 import webbrowser
 from urllib.parse import quote_plus
 
@@ -43,7 +44,7 @@ def weather_action(
 
 
 def _log(message: str, player=None) -> None:
-    print(f"[Weather] {message}")
+    diagnostic(f"[Weather] {message}")
     if player:
         try:
             player.write_log(f"JARVIS: {message}")

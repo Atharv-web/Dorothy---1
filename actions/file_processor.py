@@ -15,6 +15,7 @@ Supported types:
   zip     → list, extract
   pptx    → summarize, extract_text, to_pdf
 """
+from core.diagnostics import diagnostic
 
 import os
 import re
@@ -795,7 +796,7 @@ def file_processor(parameters: dict, player=None, speak=None) -> str:
     params      = {**parameters, "instruction": instruction}
 
     log_msg = f"[FileProcessor] {file_type.upper()} | {path.name} | action={action or 'auto'}"
-    print(log_msg)
+    diagnostic(log_msg)
     if player:
         player.write_log(log_msg)
 
@@ -834,5 +835,5 @@ def file_processor(parameters: dict, player=None, speak=None) -> str:
         return result or "Done."
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        diagnostic("Exception details withheld.")
         return f"Processing failed: {e}"

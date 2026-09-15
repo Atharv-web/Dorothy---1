@@ -1,3 +1,4 @@
+from core.diagnostics import diagnostic
 import json
 import os
 import platform
@@ -193,7 +194,7 @@ def _schedule_windows(target_dt: datetime, task_name: str,
     if result.returncode != 0:
         script_path.unlink(missing_ok=True)
         err = (result.stderr or result.stdout).strip()
-        print(f"[Reminder] ❌ schtasks: {err}")
+        diagnostic(f"[Reminder] ❌ schtasks: {err}")
         return ""  
 
     return task_name
@@ -243,7 +244,7 @@ def _schedule_mac(target_dt: datetime, task_name: str,
     if result.returncode != 0:
         plist_path.unlink(missing_ok=True)
         script_path.unlink(missing_ok=True)
-        print(f"[Reminder] ❌ launchctl: {result.stderr.strip()}")
+        diagnostic(f"[Reminder] ❌ launchctl: {result.stderr.strip()}")
         return ""
 
     return label
@@ -267,7 +268,7 @@ def _schedule_linux(target_dt: datetime, task_name: str,
         )
         if result.returncode == 0:
             return task_name
-        print(f"[Reminder] ⚠️ systemd-run failed: {result.stderr.strip()}, trying 'at'")
+        diagnostic(f"[Reminder] ⚠️ systemd-run failed: {result.stderr.strip()}, trying 'at'")
 
     if shutil.which("at"):
         at_time = target_dt.strftime("%H:%M %Y-%m-%d")
@@ -278,10 +279,10 @@ def _schedule_linux(target_dt: datetime, task_name: str,
         )
         if result.returncode == 0:
             return task_name
-        print(f"[Reminder] ❌ at: {result.stderr.strip()}")
+        diagnostic(f"[Reminder] ❌ at: {result.stderr.strip()}")
         return ""
 
-    print("[Reminder] ❌ Neither systemd-run nor at found on this Linux system.")
+    diagnostic("[Reminder] ❌ Neither systemd-run nor at found on this Linux system.")
     return ""
 
 def reminder(
@@ -324,7 +325,7 @@ def reminder(
             job_id = _schedule_linux(target_dt, task_name, script_path)
     except Exception as e:
         script_path.unlink(missing_ok=True)
-        print(f"[Reminder] ❌ Scheduling exception: {e}")
+        diagnostic(f"[Reminder] ❌ Scheduling exception: {e}")
         return "Something went wrong while scheduling the reminder."
 
     if not job_id:

@@ -1,5 +1,6 @@
 
 from __future__ import annotations
+from core.diagnostics import diagnostic
 
 import asyncio
 import concurrent.futures
@@ -104,12 +105,12 @@ def _real_profile_dir(browser: str) -> str:
 
     for p in candidates:
         if p.exists():
-            print(f"[Browser] ✅ Real profile found for {browser}: {p}")
+            diagnostic(f"[Browser] ✅ Real profile found for {browser}: {p}")
             return str(p)
 
     fallback = home / ".jarvis_profiles" / browser
     fallback.mkdir(parents=True, exist_ok=True)
-    print(f"[Browser] ⚠️  Real profile not found for {browser}, using: {fallback}")
+    diagnostic(f"[Browser] ⚠️  Real profile not found for {browser}, using: {fallback}")
     return str(fallback)
 
 def _firefox_profile_dir() -> Optional[str]:
@@ -147,7 +148,7 @@ def _firefox_profile_dir() -> Optional[str]:
         default_path = str(base / p) if is_rel else p
 
     if default_path and Path(default_path).exists():
-        print(f"[Browser] Firefox real profile: {default_path}")
+        diagnostic(f"[Browser] Firefox real profile: {default_path}")
         return default_path
     return None
 
@@ -164,7 +165,7 @@ def _find_opera_windows() -> Optional[str]:
     ]
     for p in candidates:
         if p.exists():
-            print(f"[Browser] Opera found at: {p}")
+            diagnostic(f"[Browser] Opera found at: {p}")
             return str(p)
 
     try:
@@ -183,7 +184,7 @@ def _find_opera_windows() -> Optional[str]:
                     winreg.CloseKey(k)
                     exe = val.strip().strip('"').split('"')[0].split(" --")[0].strip()
                     if exe and Path(exe).exists():
-                        print(f"[Browser] Opera found via registry: {exe}")
+                        diagnostic(f"[Browser] Opera found via registry: {exe}")
                         return exe
                 except Exception:
                     continue
@@ -276,7 +277,7 @@ def _resolve_browser(name: str) -> dict | None:
     if spec.get("special") == "opera_windows":
         exe = _find_opera_windows()
         if not exe:
-            print(f"[Browser] ⚠️  Opera executable not found on Windows.")
+            diagnostic(f"[Browser] ⚠️  Opera executable not found on Windows.")
         return {"engine": engine, "exe": exe, "channel": channel}
 
     for b in bins:
@@ -397,7 +398,7 @@ def _open_native(url: str, browser_name: Optional[str]) -> str:
                     subprocess.run(cmd, check=True, timeout=10)
                     return f"Opened in {name}: {url}" if url else f"Opened {name}."
                 except Exception as e:
-                    print(f"[Browser] 'open -a {app}' failed ({e}), trying binary…")
+                    diagnostic(f"[Browser] 'open -a {app}' failed ({e}), trying binary…")
 
         spec = _resolve_browser(name)
         exe  = spec.get("exe") if spec else None
@@ -414,8 +415,8 @@ def _open_native(url: str, browser_name: Optional[str]) -> str:
                 )
                 return f"Opened in {name}: {url}" if url else f"Opened {name}."
             except Exception as e:
-                print(f"[Browser] Native launch failed for {name}: {e}")
-        print(f"[Browser] '{name}' not found — falling back to default browser.")
+                diagnostic(f"[Browser] Native launch failed for {name}: {e}")
+        diagnostic(f"[Browser] '{name}' not found — falling back to default browser.")
 
     if not url:
         return "Could not find a browser to open."
@@ -547,13 +548,13 @@ class _BrowserSession:
             try:
                 self._context = await engine_obj.launch_persistent_context(profile, **kwargs)
             except Exception as e:
-                print(f"[Browser] Firefox real profile failed ({e}), using JARVIS profile")
+                diagnostic(f"[Browser] Firefox real profile failed ({e}), using JARVIS profile")
                 jarvis = str(Path.home() / ".jarvis_profiles" / "firefox_jarvis")
                 Path(jarvis).mkdir(parents=True, exist_ok=True)
                 self._context = await engine_obj.launch_persistent_context(jarvis, **kwargs)
 
             self._page = await self._adopt_page()
-            print(f"[Browser] ✅ Firefox launched")
+            diagnostic(f"[Browser] ✅ Firefox launched")
             return
 
         if engine_name == "webkit":
@@ -568,7 +569,7 @@ class _BrowserSession:
             }
             self._context = await engine_obj.launch_persistent_context(safari_profile, **kwargs)
             self._page = await self._adopt_page()
-            print(f"[Browser] ✅ Safari launched")
+            diagnostic(f"[Browser] ✅ Safari launched")
             return
 
         profile = _real_profile_dir(self.browser_name)
@@ -602,10 +603,10 @@ class _BrowserSession:
         try:
             self._context = await engine_obj.launch_persistent_context(profile, **kwargs)
             self._page = await self._adopt_page()
-            print(f"[Browser] ✅ Launched [{label}] profile={profile}")
+            diagnostic(f"[Browser] ✅ Launched [{label}] profile={profile}")
             return
         except Exception as e:
-            print(f"[Browser] ⚠️  Real profile failed for {label}: {e}")
+            diagnostic(f"[Browser] ⚠️  Real profile failed for {label}: {e}")
 
         # Gerçek profil açılamadı (tarayıcı zaten açık / kilitli profil / yeni
         # Chrome sürümleri otomasyonla gerçek profili engelliyor). Kalıcı
@@ -613,12 +614,12 @@ class _BrowserSession:
         # hesaplar sonraki oturumlarda da açık kalır.
         jarvis_profile = str(Path.home() / ".jarvis_profiles" / self.browser_name)
         Path(jarvis_profile).mkdir(parents=True, exist_ok=True)
-        print(f"[Browser] Retrying with JARVIS profile: {jarvis_profile}")
+        diagnostic(f"[Browser] Retrying with JARVIS profile: {jarvis_profile}")
 
         try:
             self._context = await engine_obj.launch_persistent_context(jarvis_profile, **kwargs)
             self._page = await self._adopt_page()
-            print(f"[Browser] ✅ Launched [{label}] with JARVIS profile "
+            diagnostic(f"[Browser] ✅ Launched [{label}] with JARVIS profile "
                   f"(sign-ins persist across sessions)")
         except Exception as e2:
             raise RuntimeError(f"Could not launch {self.browser_name}: {e2}") from e2
@@ -646,19 +647,19 @@ class _BrowserSession:
             except PlaywrightTimeout:
                 pass   # page may have partially loaded — check URL below
             except Exception as e:
-                print(f"[Browser] goto exception (non-fatal): {e}")
+                diagnostic(f"[Browser] goto exception (non-fatal): {e}")
             return p.url
 
         result_url = await _do_goto(page)
 
         if result_url in ("about:blank", "", None, prev_url) and prev_url in ("about:blank", "", None):
-            print(f"[Browser] Still blank after goto — retrying on new tab: {url}")
+            diagnostic(f"[Browser] Still blank after goto — retrying on new tab: {url}")
             try:
                 new_page   = await self._context.new_page()
                 self._page = new_page
                 result_url = await _do_goto(new_page)
             except Exception as e:
-                print(f"[Browser] New-tab retry failed: {e}")
+                diagnostic(f"[Browser] New-tab retry failed: {e}")
 
         if result_url and result_url not in ("about:blank", "", None):
             return f"Opened: {result_url}"
@@ -870,7 +871,7 @@ class _SessionRegistry:
                 sess = _BrowserSession(browser_name)
                 sess.start()
                 self._sessions[browser_name] = sess
-                print(f"[Registry] New session: {browser_name}")
+                diagnostic(f"[Registry] New session: {browser_name}")
             return self._sessions[browser_name]
 
     def get(self, browser_name: str | None = None) -> _BrowserSession:
@@ -1010,7 +1011,7 @@ def browser_control(
             try:
                 sess.run(sess.go_to(last))
             except Exception as e:
-                print(f"[Browser] Could not resume last page ({last}): {e}")
+                diagnostic(f"[Browser] Could not resume last page ({last}): {e}")
 
         if action == "click":
             result = sess.run(sess.click(params.get("selector"), params.get("text")))
@@ -1055,6 +1056,6 @@ def browser_control(
 
 def _log(player, text: str):
     short = str(text)[:80]
-    print(f"[Browser] {short}")
+    diagnostic(f"[Browser] {short}")
     if player:
         player.write_log(f"[browser] {short[:60]}")

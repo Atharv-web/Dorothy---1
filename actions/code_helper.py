@@ -1,3 +1,4 @@
+from core.diagnostics import diagnostic
 import subprocess
 import sys
 import json
@@ -100,10 +101,10 @@ def _take_screenshot() -> Path | None:
         screenshot_path = Path.home() / "Desktop" / f"jarvis_debug_{int(time.time())}.png"
         screenshot = pyautogui.screenshot()
         screenshot.save(str(screenshot_path))
-        print(f"[Code] 📸 Screenshot: {screenshot_path}")
+        diagnostic(f"[Code] 📸 Screenshot: {screenshot_path}")
         return screenshot_path
     except Exception as e:
-        print(f"[Code] ⚠️ Screenshot failed: {e}")
+        diagnostic(f"[Code] ⚠️ Screenshot failed: {e}")
         return None
 
 
@@ -152,7 +153,7 @@ def _detect_intent(description: str, file_path: str, code: str) -> str:
             if ans in _VALID_INTENTS:
                 return ans
         except Exception as e:
-            print(f"[Code] Intent classification failed ({e}) — structural fallback")
+            diagnostic(f"[Code] Intent classification failed ({e}) — structural fallback")
 
     # Yapısal geri dönüş — hiçbir dile bağlı değil
     if file_exists:
@@ -252,7 +253,7 @@ def _build(description, language, output_path, args, timeout, speak=None, player
 
     try:
         code, path = _write(description, lang, output_path, player)
-        print(f"[Code] ✅ Written: {path}")
+        diagnostic(f"[Code] ✅ Written: {path}")
     except Exception as e:
         msg = f"Could not write initial code: {e}"
         if speak: speak(msg)
@@ -260,7 +261,7 @@ def _build(description, language, output_path, args, timeout, speak=None, player
 
     last_output = ""
     for attempt in range(1, MAX_BUILD_ATTEMPTS + 1):
-        print(f"[Code] 🔄 Attempt {attempt}/{MAX_BUILD_ATTEMPTS}")
+        diagnostic(f"[Code] 🔄 Attempt {attempt}/{MAX_BUILD_ATTEMPTS}")
         if player:
             player.write_log(f"[Code] Attempt {attempt}...")
 
@@ -275,7 +276,7 @@ def _build(description, language, output_path, args, timeout, speak=None, player
             if speak: speak(msg)
             return f"{msg}\n\nOutput:\n{last_output}"
 
-        print(f"[Code] ⚠️ Error on attempt {attempt}, fixing...")
+        diagnostic(f"[Code] ⚠️ Error on attempt {attempt}, fixing...")
         if player:
             player.write_log(f"[Code] Fixing (attempt {attempt})...")
 
@@ -301,7 +302,7 @@ def _write_action(description, language, output_path, player) -> str:
         player.write_log("[Code] Writing code...")
     try:
         code, path = _write(description, language, output_path, player)
-        print(f"[Code] ✅ Written: {path}")
+        diagnostic(f"[Code] ✅ Written: {path}")
         return f"Code written. Saved to: {path}\n\nPreview:\n{_preview(code)}"
     except Exception as e:
         return f"Could not generate code: {e}"
@@ -339,7 +340,7 @@ Updated code:"""
         return f"Could not edit code: {e}"
 
     status = _save_file(Path(file_path), edited)
-    print(f"[Code] ✅ Edited: {file_path}")
+    diagnostic(f"[Code] ✅ Edited: {file_path}")
     return f"File edited. {status}\n\nPreview:\n{_preview(edited)}"
 
 
@@ -424,7 +425,7 @@ Optimized code:"""
         save_path = _resolve_save_path(output_path, lang)
 
     status = _save_file(save_path, optimized)
-    print(f"[Code] ✅ Optimized: {save_path}")
+    diagnostic(f"[Code] ✅ Optimized: {save_path}")
 
     original_lines  = len(code.splitlines())
     optimized_lines = len(optimized.splitlines())
@@ -443,7 +444,7 @@ def _screen_debug_action(description, file_path, player, speak=None) -> str:
     if player:
         player.write_log("[Code] Taking screenshot for analysis...")
 
-    print("[Code] 📸 Capturing screen for debug...")
+    diagnostic("[Code] 📸 Capturing screen for debug...")
 
 
     screenshot_path = _take_screenshot()
@@ -455,7 +456,7 @@ def _screen_debug_action(description, file_path, player, speak=None) -> str:
     if file_path:
         file_content, err = _read_file(file_path)
         if err:
-            print(f"[Code] ⚠️ Could not read file: {err}")
+            diagnostic(f"[Code] ⚠️ Could not read file: {err}")
 
     try:
         from google import genai
@@ -495,7 +496,7 @@ Be specific and actionable. If you see an error message, quote it exactly."""
         )
 
         analysis = response.text.strip()
-        print(f"[Code] ✅ Screen analysis complete")
+        diagnostic(f"[Code] ✅ Screen analysis complete")
 
         try:
             screenshot_path.unlink()
@@ -510,7 +511,7 @@ Be specific and actionable. If you see an error message, quote it exactly."""
                 save_path  = Path(file_path)
                 _save_file(save_path, fixed_code)
                 analysis += f"\n\n✅ Fixed code has been saved to: {file_path}"
-                print(f"[Code] ✅ Fixed code saved: {file_path}")
+                diagnostic(f"[Code] ✅ Fixed code saved: {file_path}")
 
         return analysis
 
@@ -555,7 +556,7 @@ def code_helper(
 
     if action == "auto":
         action = _detect_intent(description, file_path, code)
-        print(f"[Code] 🤖 Auto-detected: {action}")
+        diagnostic(f"[Code] 🤖 Auto-detected: {action}")
 
     if action == "write":
         return _write_action(description, language, output_path, player)
