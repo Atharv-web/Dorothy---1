@@ -1,1 +1,11 @@
-docling
+--extra-index-url https://download.pytorch.org/whl/cu130
+torch==2.14.0+cu130
+torchvision==0.29.0+cu130
+docling==2.128.0
+fastapi>=0.115,<1
+uvicorn>=0.34,<1
+python-multipart>=0.0.20,<1
+jinja2>=3.1.6,<4
+rarfile>=4.2,<5
+resvg-py>=0.5,<1
+defusedxml>=0.7,<1
