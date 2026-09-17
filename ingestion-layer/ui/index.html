@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% if refresh %}<meta http-equiv="refresh" content="4">{% endif %}
+  <title>Dorothy — Document intake</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/png" href="/static/search.png">
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="/" aria-label="Dorothy home"><span class="brand-mark">d.</span> dorothy<span class="brand-divider">/</span><span class="brand-section">document intake</span></a>
+  </header>
+  <main>
+    {% if not job %}
+    <section class="intro">
+      <p class="eyebrow">KNOWLEDGE STARTS HERE <span>01 / INTAKE</span></p>
+      <h1>A place for<br>everything you <em>know.</em></h1>
+      <p class="intro-copy">Bring your documents, scans, and folders together.<br>Turn them into readable, structured information.</p>
+    </section>
+    {% else %}
+    <nav class="batch-navigation" aria-label="Batch navigation"><a href="/">← Upload more files</a><span class="small-note">Document intake / Results</span></nav>
+    {% endif %}
+
+    {% if error %}<div class="notice error" role="alert">{{ error }} <a href="/">Back to uploads</a></div>{% endif %}
+    {% if startup_error %}
+    <div class="notice error" role="alert">{{ startup_error }} Saved results are still available below.</div>
+    {% elif not ready %}
+    <section class="loading-card startup-card" role="status" aria-live="polite">
+      <span class="loading-ring" aria-hidden="true"></span>
+      <div><p class="eyebrow">GETTING READY</p><h2>Preparing your workspace</h2><p>Uploads will open when document processing is ready. First-time setup may take a few minutes.</p></div>
+      <span class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    </section>
+    {% endif %}
+
+    {% if not job %}
+    <div class="intake-grid">
+      <section class="upload-panel" aria-labelledby="upload-heading">
+        <div class="section-top"><span class="eyebrow">ADD YOUR SOURCES</span><span class="small-note">One file or a whole collection</span></div>
+        <div class="upload-heading"><span class="paper-icon" aria-hidden="true">↥</span><div><h2 id="upload-heading">Start with your files.</h2><p>Select documents or an archive from your device.</p></div></div>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+          <fieldset {% if not ready %}disabled{% endif %}>
+          <label class="field-label" for="files">Documents, images, or archives</label>
+          <input id="files" name="files" type="file" accept="{{ accept }}" multiple required aria-describedby="upload-limits">
+          <div class="form-footer"><p id="upload-limits">50 MiB per file · 200 MiB per batch</p><button type="submit">Ingest files <span aria-hidden="true">↗</span></button></div>
+          </fieldset>
+        </form>
+        <details class="folder-option">
+          <summary>Have an entire folder? <span aria-hidden="true">+</span></summary>
+          <form action="/upload" method="post" enctype="multipart/form-data">
+            <fieldset {% if not ready %}disabled{% endif %}>
+            <label class="field-label" for="folder">Choose a folder and include its subfolders</label>
+            <input id="folder" name="files" type="file" webkitdirectory directory multiple required aria-describedby="folder-help">
+            <p id="folder-help" class="small-note">Up to 500 files. Unsupported types are listed as skipped.<br>If your browser cannot select folders, upload a ZIP instead.</p>
+            <button class="secondary" type="submit">Ingest folder <span aria-hidden="true">↗</span></button>
+            </fieldset>
+          </form>
+        </details>
+      </section>
+
+      <aside class="format-panel" aria-labelledby="formats-heading">
+        <p class="eyebrow">A FEW THINGS TO KNOW</p>
+        <h2 id="formats-heading">Different formats.<br>One starting point.</h2>
+        <dl class="formats">
+          <div><dt>01 <span>Documents</span></dt><dd>PDF · DOCX · XLSX · PPTX · TXT</dd></div>
+          <div><dt>02 <span>Images</span></dt><dd>JPG · JPEG · PNG · SVG · WEBP</dd></div>
+          <div><dt>03 <span>Archives</span></dt><dd>ZIP · RAR</dd></div>
+        </dl>
+        <p class="format-note">Archives are unpacked and processed file by file. Compressed RAR needs an extraction tool installed on the server.</p>
+        <div class="output-note"><span aria-hidden="true">↳</span><p>Your output<br><strong>Readable Markdown + structured JSON</strong></p></div>
+      </aside>
+    </div>
+    {% endif %}
+
+    {% if job %}
+    <section class="batch-section" aria-labelledby="batch-heading">
+      <div class="section-top"><div><p class="eyebrow">CURRENT BATCH</p><h2 id="batch-heading">Your ingestion results</h2></div><span class="status {{ job.status }}">{{ job.status | replace('_', ' ') }}</span></div>
+      {% if busy and ready %}
+      <div class="loading-card" role="status" aria-live="polite">
+        <span class="loading-ring" aria-hidden="true"></span>
+        <div><p class="eyebrow">{% if job.status == 'queued' %}IN THE QUEUE{% else %}READING YOUR SOURCES{% endif %}</p><h2>{% if job.status == 'queued' %}Your batch is waiting{% else %}Bringing the details together{% endif %}</h2><p>{% if job.status == 'queued' %}Processing will start when earlier batches finish.{% else %}Extracting text and tables. Completed files appear below.{% endif %}</p></div>
+        <span class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      </div>
+      {% endif %}
+      {% if busy and not startup_error %}<p class="small-note">Processing continues if you leave this page. {% if preview_selected %}Automatic refresh is paused while you read. <a href="/jobs/{{ job.id }}">Resume updates ↻</a>{% else %}This page updates every 4 seconds. <a href="/jobs/{{ job.id }}">Refresh now ↻</a>{% endif %}</p>{% endif %}
+      {% if job.error %}<p class="notice error">{{ job.error }}</p>{% endif %}
+      <p class="small-note">{{ job.inputs | length }} source upload(s) · {{ job.results | length }} result(s) so far</p>
+      {% if job.results %}<div class="table-scroll"><table><thead><tr><th scope="col">Source</th><th scope="col">Status</th><th scope="col">Output / details</th></tr></thead><tbody>
+      {% for item in job.results %}<tr><td class="filename">{{ item.name }}</td><td><span class="status {{ item.status }}">{{ item.status }}</span></td><td>{% if item.id and item.status in ['completed', 'partial'] %}<a href="/jobs/{{ job.id }}?preview={{ item.id }}#preview">Preview ↗</a><a href="/jobs/{{ job.id }}/files/{{ item.id }}/md">Markdown ↓</a><a href="/jobs/{{ job.id }}/files/{{ item.id }}/json">JSON ↓</a>{% endif %}{% if item.message %}<p class="result-message">{{ item.message }}</p>{% endif %}</td></tr>{% endfor %}
+      </tbody></table></div>{% elif busy and not startup_error %}<div class="reading-placeholder" aria-hidden="true"><span></span><span></span><span></span></div>{% else %}<p class="empty-copy">No files were extracted from this batch.</p>{% endif %}
+    </section>
+    {% if preview %}
+    <section id="preview" class="preview-panel" aria-labelledby="preview-heading">
+      <div class="preview-header"><div><p class="eyebrow">EXTRACTED CONTENT</p><h2 id="preview-heading">{{ preview.item.name }}</h2></div><a href="/jobs/{{ job.id }}/files/{{ preview.item.id }}/md">Download Markdown ↓</a></div>
+      {% if preview.item.status == 'partial' %}<p class="notice">Extraction is incomplete. Some content may be missing.</p>{% endif %}
+      {% if preview.error %}<p class="notice error">{{ preview.error }}</p>
+      {% elif preview.text %}<pre class="document-preview" tabindex="0" aria-label="Extracted Markdown preview">{{ preview.text }}</pre>
+      {% else %}<p class="empty-copy">No readable text was extracted from this file.</p>{% endif %}
+      <div class="preview-footer"><span>Text preview · Markdown formatting is shown as text</span>{% if preview.truncated %}<span>Showing the first 20,000 characters. Download for the complete output.</span>{% endif %}</div>
+    </section>
+    {% endif %}
+    {% endif %}
+
+    <section class="history" aria-labelledby="history-heading">
+      <div class="section-top"><h2 id="history-heading">Recent batches <span class="count">{{ jobs | length }}</span></h2><span class="small-note">Saved in this workspace · latest 20</span></div>
+      {% if jobs %}<div class="history-list">{% for batch in jobs %}<a class="history-row" href="/jobs/{{ batch.id }}"><span class="batch-icon" aria-hidden="true">↳</span><span class="history-name">{{ batch.inputs[0].name }}{% if batch.inputs | length > 1 %}<small> + {{ batch.inputs | length - 1 }} more</small>{% endif %}</span><time>{{ batch.created }} UTC</time><span class="status {{ batch.status }}">{{ batch.status }}</span><span aria-hidden="true">↗</span></a>{% endfor %}</div>
+      {% else %}<div class="empty-state"><span class="empty-symbol" aria-hidden="true">≋</span><div><h3>Nothing here. Yet.</h3><p>Your uploaded batches and extracted files will live here.</p></div><span class="empty-number" aria-hidden="true">00</span></div>{% endif %}
+    </section>
+    <footer><span>DOROTHY <span class="footer-divider">/</span> Make room for knowledge.</span><span>Document intake · Powered by Docling</span></footer>
+  </main>
+</body>
+</html>
