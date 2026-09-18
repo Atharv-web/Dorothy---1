@@ -87,19 +87,19 @@
       {% if job.error %}<p class="notice error">{{ job.error }}</p>{% endif %}
       <p class="small-note">{{ job.inputs | length }} source upload(s) · {{ job.results | length }} result(s) so far</p>
       {% if job.results %}<div class="table-scroll"><table><thead><tr><th scope="col">Source</th><th scope="col">Status</th><th scope="col">Output / details</th></tr></thead><tbody>
-      {% for item in job.results %}<tr><td class="filename">{{ item.name }}</td><td><span class="status {{ item.status }}">{{ item.status }}</span></td><td>{% if item.id and item.status in ['completed', 'partial'] %}<a href="/jobs/{{ job.id }}?preview={{ item.id }}#preview">Preview ↗</a><a href="/jobs/{{ job.id }}/files/{{ item.id }}/md">Markdown ↓</a><a href="/jobs/{{ job.id }}/files/{{ item.id }}/json">JSON ↓</a>{% endif %}{% if item.message %}<p class="result-message">{{ item.message }}</p>{% endif %}</td></tr>{% endfor %}
+      {% for item in job.results %}<tr><td class="filename">{{ item.name }}</td><td><span class="status {{ item.status }}">{{ item.status }}</span></td><td>{% if item.id and item.status in ['completed', 'partial'] %}<a href="/jobs/{{ job.id }}?preview={{ item.id }}#preview-{{ item.id }}">Preview ↗</a><a href="/jobs/{{ job.id }}/files/{{ item.id }}/md">Markdown ↓</a><a href="/jobs/{{ job.id }}/files/{{ item.id }}/json">JSON ↓</a>{% endif %}{% if item.message %}<p class="result-message">{{ item.message }}</p>{% endif %}</td></tr>{% endfor %}
       </tbody></table></div>{% elif busy and not startup_error %}<div class="reading-placeholder" aria-hidden="true"><span></span><span></span><span></span></div>{% else %}<p class="empty-copy">No files were extracted from this batch.</p>{% endif %}
     </section>
-    {% if preview %}
-    <section id="preview" class="preview-panel" aria-labelledby="preview-heading">
-      <div class="preview-header"><div><p class="eyebrow">EXTRACTED CONTENT</p><h2 id="preview-heading">{{ preview.item.name }}</h2></div><a href="/jobs/{{ job.id }}/files/{{ preview.item.id }}/md">Download Markdown ↓</a></div>
+    {% for preview in previews %}
+    <section id="preview-{{ preview.item.id }}" class="preview-panel" aria-labelledby="preview-heading-{{ preview.item.id }}">
+      <div class="preview-header"><div><p class="eyebrow">EXTRACTED CONTENT</p><h2 id="preview-heading-{{ preview.item.id }}">{{ preview.item.name }}</h2></div><a href="/jobs/{{ job.id }}/files/{{ preview.item.id }}/md">Download Markdown ↓</a></div>
       {% if preview.item.status == 'partial' %}<p class="notice">Extraction is incomplete. Some content may be missing.</p>{% endif %}
       {% if preview.error %}<p class="notice error">{{ preview.error }}</p>
       {% elif preview.text %}<pre class="document-preview" tabindex="0" aria-label="Extracted Markdown preview">{{ preview.text }}</pre>
       {% else %}<p class="empty-copy">No readable text was extracted from this file.</p>{% endif %}
       <div class="preview-footer"><span>Text preview · Markdown formatting is shown as text</span>{% if preview.truncated %}<span>Showing the first 20,000 characters. Download for the complete output.</span>{% endif %}</div>
     </section>
-    {% endif %}
+    {% endfor %}
     {% endif %}
 
     <section class="history" aria-labelledby="history-heading">
