@@ -26,6 +26,27 @@ MAX_DEPTH = 3
 logger = logging.getLogger(__name__)
 
 
+def clean_extracted_text(text: str) -> str:
+    """Replace ampersand entities, including ones missing a semicolon."""
+    return re.sub(r"&amp(?:;|(?![a-zA-Z0-9]))", "and", text, flags=re.IGNORECASE)
+
+
+def clean_document_text(document):
+    """Clean extracted text fields, retaining original text and source metadata."""
+    def clean(value):
+        if isinstance(value, dict):
+            return {
+                key: clean_extracted_text(item) if key == "text" and isinstance(item, str)
+                else clean(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [clean(item) for item in value]
+        return value
+
+    return type(document).model_validate(clean(document.model_dump()))
+
+
 def safe_name(name: str) -> str:
     """Keep relative source paths as metadata, never as disk destinations."""
     name = name.replace("\\", "/")
@@ -185,6 +206,7 @@ class Ingestor:
                 raise ValueError("Docling could not read this file. It may be damaged, encrypted, or mislabeled.")
             document = result.document
             partial = result.status == ConversionStatus.PARTIAL_SUCCESS
+        document = clean_document_text(document)
         markdown = output.with_suffix(".md")
         structured = output.with_suffix(".json")
         try:
