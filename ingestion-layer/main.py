@@ -17,7 +17,7 @@ from starlette.datastructures import UploadFile
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from ingestion import Ingestor, MAX_FILES, MAX_FILE_BYTES, MAX_UPLOAD_BYTES, SUPPORTED, safe_name
+from ingestion import Ingestor, MAX_FILES, MAX_FILE_BYTES, MAX_UPLOAD_BYTES, SUPPORTED, safe_name, clean_extracted_text
 from storage import Store, new_id
 
 BASE = Path(__file__).resolve().parent
@@ -115,31 +115,34 @@ def create_app(data_dir=None, ingestor=None):
         ready = app.state.ready.is_set()
         startup_error = app.state.startup_error
         busy = bool(job and job["status"] in {"queued", "processing"})
-        preview = None
+        previews = []
         if job:
             outputs = [row for row in job["results"]
                        if row.get("id") and row["status"] in {"completed", "partial"}]
-            selected = next((row for row in outputs if row["id"] == preview_id), None) if preview_id else next(iter(outputs), None)
-            if preview_id and selected is None:
+            if preview_id and not any(row["id"] == preview_id for row in outputs):
                 raise HTTPException(404, "Preview not found.")
-            if selected:
-                preview = {"item": selected, "text": "", "truncated": False, "error": None}
-                path = data_dir / job["id"] / "output" / f'{selected["id"]}.md'
+            for item in outputs:
+                preview = {"item": item, "text": "", "truncated": False, "error": None}
+                path = data_dir / job["id"] / "output" / f'{item["id"]}.md'
                 try:
                     with path.open(encoding="utf-8") as file:
-                        text = file.read(PREVIEW_CHARACTERS + 1)
+                        # Entity replacement shortens old outputs; keep enough text
+                        # to fill the preview and determine whether more remains.
+                        text = file.read(PREVIEW_CHARACTERS * 2 + 6)
+                    text = clean_extracted_text(text)
                     preview["text"] = text[:PREVIEW_CHARACTERS]
                     preview["truncated"] = len(text) > PREVIEW_CHARACTERS
                 except (OSError, UnicodeError):
                     logger.exception("Could not read preview for batch %s", job["id"])
                     preview["error"] = "This preview is unavailable. Try the download or check the server logs."
+                previews.append(preview)
         # A selected preview stays still while the user reads; only status views refresh.
         refresh = not error and not preview_id and not startup_error and (not ready or busy)
         return templates.TemplateResponse(
             request=request, name="index.html",
             context={"jobs": app.state.store.recent(), "job": job, "error": error,
                      "ready": ready, "startup_error": startup_error, "busy": busy,
-                     "refresh": refresh, "preview": preview, "preview_selected": bool(preview_id),
+                     "refresh": refresh, "previews": previews, "preview_selected": bool(preview_id),
                      "accept": ",".join(sorted(SUPPORTED))}, status_code=status_code,
         )
 
