@@ -9,3 +9,7 @@ jinja2>=3.1.6,<4
 rarfile>=4.2,<5
 resvg-py>=0.5,<1
 defusedxml>=0.7,<1
+google-genai>=2.18.1,<3
+pinecone>=10,<11
+pydantic>=2.10,<3
+python-dotenv>=1.0,<2
